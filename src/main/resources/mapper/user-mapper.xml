@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mytype.douyin.dao.UserMapper">
+
+    <sql id="insertFields">
+        username, password, follow_count, follower_count, salt, create_time, avatar, signature, background_image
+    </sql>
+
+    <sql id="selectFields">
+        user_id, username, password, follow_count, follower_count, salt, create_time, avatar, signature, background_image
+    </sql>
+
+    <select id="selectById" resultType="User">
+        select <include refid="selectFields"></include>
+        from user_t
+        where user_id = #{id}
+    </select>
+
+    <select id="selectByName" resultType="User">
+        select <include refid="selectFields"></include>
+        from user_t
+        where username = #{username}
+    </select>
+
+
+    <insert id="insertUser" parameterType="User" keyProperty="id">
+        insert into user_t (<include refid="insertFields"></include>)
+        values(#{username}, #{password}, #{followCount}, #{followerCount}, #{salt}, #{createTime}, #{avatar}, #{signature}, #{backgroundImage})
+    </insert>
+
+
+    <update id="updateHeader">
+        update user_t set avatar = #{avatar} where user_id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        update user_t set password = #{password} where user_id = #{id}
+    </update>
+
+</mapper>

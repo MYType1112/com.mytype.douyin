@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mytype.douyin.dao.CommentMapper">
+
+    <sql id="selectFields">
+        id, user_id, entity_type, entity_id, target_id, content, status, create_date
+    </sql>
+
+    <sql id="insertFields">
+        user_id, entity_type, entity_id, target_id, content, status, create_date
+    </sql>
+
+    <resultMap id="CommentJoinUser" type="Comment" autoMapping="true">
+        <id property="id" column="id"></id>
+        <result property="userId" column="user_id"></result>
+        <result property="entityType" column="entity_type"></result>
+        <result property="entityId" column="entity_id"></result>
+        <result property="targetId" column="target_id"></result>
+        <result property="content" column="content"></result>
+        <result property="status" column="status"></result>
+        <result property="createDate" column="create_date"></result>
+        <!--
+        association 处理一对一
+        封装一对一信息关系的标签
+        property  emp类的属性名
+        javaType  用哪个类的对象给属性赋值
+        -->
+        <association property="user" column="" javaType="User">
+            <id column="user_id" property="userId"></id>
+            <result column="username" property="username"></result>
+            <result column="password" property="password"></result>
+            <result column="salt" property="salt"></result>
+            <result column="follow_count" property="followCount"></result>
+            <result column="follower_count" property="followerCount"></result>
+            <result column="create_time" property="createTime"></result>
+            <result column="avatar" property="avatar"></result>
+            <result column="signature" property="signature"></result>
+            <result column="background_image" property="backgroundImage"></result>
+        </association>
+    </resultMap>
+
+    <select id="selectCommentsByEntity" resultMap="CommentJoinUser">
+        select *
+        from comment_t
+        left join user_t on comment_t.user_id = user_t.user_id
+        where status = 0
+        and entity_type = #{entityType}
+        and entity_id = #{entityId}
+        order by create_date asc
+        limit #{offset}, #{limit}
+    </select>
+
+    <select id="selectCountByEntity" resultType="int">
+        select count(id)
+        from comment_t
+        where status = 0
+        and entity_type = #{entityType}
+        and entity_id = #{entityId}
+    </select>
+
+    <insert id="insertComment" parameterType="Comment" keyProperty="id">
+        insert into comment_t (<include refid="insertFields"></include>)
+        values(#{userId},#{entityType},#{entityId},#{targetId},#{content},#{status},#{createDate})
+    </insert>
+
+    <select id="selectCommentById" resultMap="CommentJoinUser">
+        select *
+        from comment_t left join user_t on comment_t.user_id = user_t.user_id
+        where id = #{id}
+    </select>
+
+    <update id="deleteCommentByEntity">
+        update comment_t set status = 1
+        where entity_type = #{entityType}
+        and entity_id = #{entityId}
+    </update>
+
+</mapper>
