@@ -2,6 +2,7 @@ package com.mytype.douyin.service;
 
 import com.mytype.douyin.entity.User;
 import com.mytype.douyin.entity.Video;
+import com.mytype.douyin.until.CommunityConstant;
 import com.mytype.douyin.until.RedisKeyUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
@@ -13,10 +14,13 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 @Service
-public class LikeService {
+public class LikeService implements CommunityConstant {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private VideoService videoService;
 
     // 点赞
     public void like(int userId, int entityType, int entityId, int entityUserId) {
@@ -24,7 +28,8 @@ public class LikeService {
             @Override
             public Object execute(RedisOperations operations) throws DataAccessException {
                 String entityLikeKey = RedisKeyUtil.getEntityLikeKey(entityType, entityId);
-//                String userLikeKey = RedisKeyUtil.getUserLikeKey(entityUserId);
+                String userLikeKey = RedisKeyUtil.getUserLikeKey(entityUserId);
+                String favoriteKey = RedisKeyUtil.getFavoriteKey(userId, entityType);
 
                 boolean isMember = operations.opsForSet().isMember(entityLikeKey, userId);
 
@@ -32,15 +37,43 @@ public class LikeService {
 
                 if (isMember) {
                     operations.opsForSet().remove(entityLikeKey, userId);
-//                    operations.opsForValue().decrement(userLikeKey);
+                    operations.opsForZSet().remove(favoriteKey, entityId);
+                    operations.opsForValue().decrement(userLikeKey);
                 } else {
                     operations.opsForSet().add(entityLikeKey, userId);
-//                    operations.opsForValue().increment(userLikeKey);
+                    operations.opsForZSet().add(favoriteKey, entityId, System.currentTimeMillis());
+                    operations.opsForValue().increment(userLikeKey);
                 }
 
                 return operations.exec();
             }
         });
+    }
+
+    // 查询某用户点赞的实体的数量
+    public long findFavoriteCount(int userId, int entityType) {
+        String favoriteKey = RedisKeyUtil.getFavoriteKey(userId, entityType);
+        return redisTemplate.opsForZSet().zCard(favoriteKey);
+    }
+
+    // 查询某用户点赞的视频
+    public List<Video> findFavorite(int userId, int offset, int limit) {
+        String favoriteKey = RedisKeyUtil.getFavoriteKey(userId, ENTITY_TYPE_VIDEO);
+        Set<Integer> targetIds = redisTemplate.opsForZSet().reverseRange(favoriteKey, offset, offset + limit - 1);
+
+        if (targetIds == null) {
+            return null;
+        }
+
+        List<Video> list = new ArrayList<>();
+        for (Integer targetId : targetIds) {
+            Video video = videoService.findVideoById(targetId);
+            if(video!=null){
+                list.add(video);
+            }
+        }
+
+        return list;
     }
 
     // 查询某实体点赞的数量
@@ -59,29 +92,7 @@ public class LikeService {
     public int findUserLikeCount(int userId) {
         String userLikeKey = RedisKeyUtil.getUserLikeKey(userId);
         Integer count = (Integer) redisTemplate.opsForValue().get(userLikeKey);
-        return count == null ? 0 : count.intValue();
+        return count == null ? 0 : count;
     }
-
-    // 查询某用户点赞的视频
-//    public List<Video> findLikeVideos(int userId, int offset, int limit) {
-//        String followeeKey = RedisKeyUtil.getFolloweeKey(userId, ENTITY_TYPE_USER);
-//        Set<Integer> targetIds = redisTemplate.opsForZSet().reverseRange(followeeKey, offset, offset + limit - 1);
-//
-//        if (targetIds == null) {
-//            return null;
-//        }
-//
-//        List<Map<String, Object>> list = new ArrayList<>();
-//        for (Integer targetId : targetIds) {
-//            Map<String, Object> map = new HashMap<>();
-//            User user = userService.findUserById(targetId);
-//            map.put("user", user);
-//            Double score = redisTemplate.opsForZSet().score(followeeKey, targetId);
-//            map.put("followTime", new Date(score.longValue()));
-//            list.add(map);
-//        }
-//
-//        return list;
-//    }
 
 }

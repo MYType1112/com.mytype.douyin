@@ -5,6 +5,7 @@ public class RedisKeyUtil {
     private static final String SPLIT = ":";
     private static final String PREFIX_ENTITY_LIKE = "like:entity";
     private static final String PREFIX_USER_LIKE = "like:user";
+    private static final String PREFIX_FAVORITE = "favorite";
     private static final String PREFIX_FOLLOWEE = "followee";
     private static final String PREFIX_FOLLOWER = "follower";
     private static final String PREFIX_TICKET = "ticket";
@@ -26,6 +27,12 @@ public class RedisKeyUtil {
     // followee:userId:entityType -> zset(entityId,now)
     public static String getFolloweeKey(int userId, int entityType) {
         return PREFIX_FOLLOWEE + SPLIT + userId + SPLIT + entityType;
+    }
+
+    // 某个用户点赞的实体
+    // favorite:userId:entityType -> zset(entityId,now)
+    public static String getFavoriteKey(int userId, int entityType) {
+        return PREFIX_FAVORITE + SPLIT + userId + SPLIT + entityType;
     }
 
     // 某个实体拥有的粉丝

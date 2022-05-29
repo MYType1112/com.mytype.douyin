@@ -3,6 +3,7 @@ package com.mytype.douyin.controller;
 import com.mytype.douyin.entity.*;
 import com.mytype.douyin.service.*;
 import com.mytype.douyin.until.CommunityConstant;
+import com.mytype.douyin.until.HostHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,38 +35,55 @@ public class FeedController implements CommunityConstant {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private HostHolder hostHolder;
+
 
     @ResponseBody
     @RequestMapping(path = "/feed", method = RequestMethod.GET)
     public FeedResponse Feed(
-            @RequestParam(name = "latest_time",defaultValue = "") String latestTime,
-            @RequestParam(name = "token",defaultValue = "") String token) {
-        Map<String, Object> infoMap = userService.userInfo(token);
-        Video[] videos = videoService.GetVideosByUserId(0).toArray(new Video[0]);
+            @RequestParam(name = "latest_time",defaultValue = "1653795200") String latestTimeArg) {
 
-        if(infoMap.containsKey("errMsg")){
-            return new FeedResponse(0,null,videos,new Date().getTime());
+        long currentTime = new Date().getTime();
+        long latestTime = latestTimeArg.equals("1653795200")?currentTime: Long.parseLong(latestTimeArg);
+
+        User user = hostHolder.getUser();
+//        Map<String, Object> infoMap = userService.userInfo(token);
+        Video[] videos = videoService.GetVideosByUserId(0,latestTime,2).toArray(new Video[0]);
+
+        long nextTime = videos.length>0?videos[videos.length-1].getUploadTime().getTime():currentTime;
+        if(user==null){
+            return new FeedResponse(0,null, videos, nextTime);
         }
         for(Video video:videos){
             // 数量
             long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_VIDEO, video.getId());
             // 状态
-            int likeStatus = likeService.findEntityLikeStatus((Integer) infoMap.get("userId"), ENTITY_TYPE_VIDEO, video.getId());
-
+            int likeStatus = likeService.findEntityLikeStatus(user.getUserId(), ENTITY_TYPE_VIDEO, video.getId());
             video.setFavoriteCount((int) likeCount);
             video.setIsFavorite(likeStatus==1);
-            video.getAuthor().setIsFollow(followService.hasFollowed((int) infoMap.get("userId"), ENTITY_TYPE_USER, video.getAuthor().getUserId()));
+
+            int followeeCount = (int) followService.findFolloweeCount(video.getAuthor().getUserId(), ENTITY_TYPE_USER);
+            int followerCount = (int) followService.findFollowerCount(ENTITY_TYPE_USER, video.getAuthor().getUserId());
+            int userLikeCount = likeService.findUserLikeCount(video.getAuthor().getUserId());
+            long favoriteCount = likeService.findFavoriteCount(video.getAuthor().getUserId(), ENTITY_TYPE_VIDEO);
+            video.getAuthor().setFollowCount(followeeCount);
+            video.getAuthor().setFollowerCount(followerCount);
+            video.getAuthor().setTotalFavorited(userLikeCount);
+            video.getAuthor().setFavoriteCount(favoriteCount);
+            video.getAuthor().setIsFollow(followService.hasFollowed(user.getUserId(), ENTITY_TYPE_USER, video.getAuthor().getUserId()));
         }
-        return new FeedResponse(0,null, videos, new Date().getTime());
+
+
+        return new FeedResponse(0,null, videos, nextTime);
     }
 
     @ResponseBody
     @RequestMapping(path = "/comment/list/", method = RequestMethod.GET)
     public CommentListResponse GetComment(
-            @RequestParam(name = "token",defaultValue = "") String token,
             @RequestParam(name = "video_id",defaultValue = "") String videoId){
 
-        System.out.println(videoId);
+//        System.out.println(videoId);
         List<Comment> commentList = commentService.findCommentsByEntity(
                 ENTITY_TYPE_VIDEO, Integer.parseInt(videoId), 0, 10);
         return new CommentListResponse(0,"",commentList);
@@ -82,21 +100,22 @@ public class FeedController implements CommunityConstant {
     ){
         Map<String,Object> res = new HashMap<>();
 
-        Map<String, Object> infoMap = userService.userInfo(token);
-        if(infoMap.containsKey("errMsg")){
+//        Map<String, Object> infoMap = userService.userInfo(token);
+        User user = hostHolder.getUser();
+        if(user==null){
             res.put("status_code",1);
-            res.put("status_msg",infoMap.get("errMsg"));
+            res.put("status_msg","请先登录！");
         }else{
             if(actionType.equals("1")){
                 Comment comment = new Comment();
-                comment.setUserId((Integer) infoMap.get("userId"));
+                comment.setUserId(user.getUserId());
                 comment.setEntityType(ENTITY_TYPE_VIDEO);
                 comment.setEntityId(Integer.parseInt(videoId));
 //                comment.setUser(userService.findUserById(Integer.parseInt(userId)));
                 comment.setContent(commentText);
                 comment.setCreateDate(new Date());
                 commentService.addComment(comment);
-                comment.setUser((User) infoMap.get("user"));
+                comment.setUser(user);
                 res.put("status_code",0);
                 res.put("comment",comment);
             }else{

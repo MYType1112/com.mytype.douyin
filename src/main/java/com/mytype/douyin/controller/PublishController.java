@@ -1,10 +1,14 @@
 package com.mytype.douyin.controller;
 
 
+import com.mytype.douyin.entity.User;
 import com.mytype.douyin.entity.Video;
 import com.mytype.douyin.entity.VideoListResponse;
 import com.mytype.douyin.until.CommunityUtil;
+import com.mytype.douyin.until.HostHolder;
+import com.mytype.douyin.until.VideoImage;
 import org.apache.commons.lang3.StringUtils;
+import org.bytedeco.javacv.FrameGrabber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.alibaba.fastjson.JSON;
@@ -23,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -38,31 +43,26 @@ public class PublishController {
     @Value("${douyin.path.domain}")
     private String domain;
 
-//    @Value("${server.servlet.context-path}")
-//    private String contextPath;
-
     @Autowired
     private VideoService videoService;
 
     @Autowired
     private UserService userService;
 
-//    @Autowired
-//    private HostHolder hostHolder;
-
-
-//    @RequestMapping(path = "/action", method = RequestMethod.GET)
-//    public String getUploadPage() {
-//        return "/action";
-//    }
+    @Autowired
+    private HostHolder hostHolder;
 
     @ResponseBody
     @RequestMapping(path = "/action", method = RequestMethod.POST)
     public Response Action(
             @RequestParam(name = "data") MultipartFile videoFile,
-            @RequestParam(name = "token", defaultValue = "") String token,
-            @RequestParam(name = "title", defaultValue = "") String title) {
+            @RequestParam(name = "title", defaultValue = "") String title) throws FrameGrabber.Exception {
 
+//        Map<String, Object> InfoMap = userService.userInfo(token);
+        User user = hostHolder.getUser();
+        if (user==null) {
+            return new Response(1, "请先登录！");
+        }
         if (videoFile == null) {
             return new Response(1, "没有文件！");
         }
@@ -75,13 +75,12 @@ public class PublishController {
 
         // 生成随机文件名
         fileName = CommunityUtil.generateUUID() + suffix;
-        // 确定文件存放的路径
-//        File dest = new File(uploadPath + "/" + fileName);
+        // 确定文件存放的路径 /D:/work/workspace/douyin/target/classes/static/uploadVideo/
         String basePath = ClassUtils.getDefaultClassLoader().getResource("").getPath()+"static/uploadVideo/";
         File dest = new File(basePath+fileName);
+
         try {
             // 存储文件
-//            videoFile.transferTo(dest);
             videoFile.transferTo(dest);
         } catch (IOException e) {
             logger.error("上传文件失败: " + e.getMessage());
@@ -89,15 +88,16 @@ public class PublishController {
             return new Response(1, "上传文件失败,服务器发生异常!");
         }
 
-        Map<String, Object> InfoMap = userService.userInfo(token);
-        if (!InfoMap.containsKey("userId")) {
-            return new Response(1, (String) InfoMap.get("errMsg"));
-        }
+        String imagePath = VideoImage.randomGrabberFFmpegImage((basePath + fileName).substring(1), 2);
 
 //      127.0.0.1:8080/static/uploadVideo/video_name
 
+        String[] split = imagePath.split("/");
+        String imageName = split[split.length-1];
+
         String videoUrl = domain + "/static/uploadVideo/" + fileName;
-        videoService.uploadVideo(videoUrl, (int) InfoMap.get("userId"), "", title);
+        String coverUrl = domain + "/static/uploadVideo/" + imageName;
+        videoService.uploadVideo(videoUrl, user.getUserId(), coverUrl, title);
 
         return new Response(0, "上传成功！");
     }
@@ -105,15 +105,16 @@ public class PublishController {
     @ResponseBody
     @RequestMapping(path = "/list", method = RequestMethod.GET)
     public Response List(
-            @RequestParam(name = "token", defaultValue = "") String token,
             @RequestParam(name = "user_id", defaultValue = "") String userId) {
 
-        Map<String, Object> infoMap = userService.userInfo(token);
-        if(infoMap.containsKey("errMsg")){
-            return new VideoListResponse(1, (String) infoMap.get("errMsg"),null);
+//        Map<String, Object> infoMap = userService.userInfo(token);
+        long currentTime = new Date().getTime();
+        User user = hostHolder.getUser();
+        if(user==null){
+            return new VideoListResponse(1, "请先登录！",null);
         }
-        List<Video> videos = videoService.GetVideosByUserId(Integer.parseInt(userId));
-        return new VideoListResponse(0, null,videos);
+        List<Video> videos = videoService.GetVideosByUserId(Integer.parseInt(userId), currentTime,20);
+        return new VideoListResponse(0, "获取发布视频列表成功！", videos);
     }
 
 }

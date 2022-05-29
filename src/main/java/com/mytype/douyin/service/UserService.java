@@ -6,8 +6,10 @@ import com.mytype.douyin.dao.UserMapper;
 import com.mytype.douyin.entity.LoginTicket;
 import com.mytype.douyin.entity.User;
 import com.mytype.douyin.until.CommunityUtil;
+import com.mytype.douyin.until.RedisKeyUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -20,8 +22,12 @@ public class UserService {
 
     @Autowired
     private UserMapper userMapper;
+
     @Autowired
     private LoginTicketMapper loginTicketMapper;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     public Map<String, Object> register(String username, String password) {
         Map<String, Object> map = new HashMap<>();
@@ -92,43 +98,47 @@ public class UserService {
         loginTicket.setTicket(CommunityUtil.generateUUID());
         loginTicket.setStatus(0);
         loginTicket.setExpired(new Date(System.currentTimeMillis() + 3600L * 24 * 100));
-        loginTicketMapper.insertLoginTicket(loginTicket);
+//        loginTicketMapper.insertLoginTicket(loginTicket);
+        String redisKey = RedisKeyUtil.getTicketKey(loginTicket.getTicket());
+        redisTemplate.opsForValue().set(redisKey, loginTicket);
 
         map.put("userId",user.getUserId());
         map.put("ticket", loginTicket.getTicket());
         return map;
     }
 
-    public Map<String, Object> userInfo(String token){
-        Map<String, Object> map = new HashMap<>();
-        if (StringUtils.isBlank(token)) {
-            map.put("errMsg", "参数错误!");
-            return map;
-        }
-        LoginTicket loginTicket = loginTicketMapper.selectByTicket(token);
-        if(loginTicket==null||loginTicket.getStatus()==1){
-            map.put("errMsg", "用户未登录!");
-            return map;
-        }
-        if(loginTicket.getExpired().before(new Date())){
-            map.put("errMsg", "用户登录过期!");
-            return map;
-        }
-        User user = userMapper.selectById(loginTicket.getUserId());
-        if(user==null){
-            map.put("errMsg", "用户不存在!");
-            return map;
-        }
-        map.put("userId",user.getUserId());
-        map.put("user", user);
-        return map;
-    }
+//    public Map<String, Object> userInfo(String token){
+//        Map<String, Object> map = new HashMap<>();
+//        if (StringUtils.isBlank(token)) {
+//            map.put("errMsg", "参数错误!");
+//            return map;
+//        }
+//        LoginTicket loginTicket = loginTicketMapper.selectByTicket(token);
+//        if(loginTicket==null||loginTicket.getStatus()==1){
+//            map.put("errMsg", "用户未登录!");
+//            return map;
+//        }
+//        if(loginTicket.getExpired().before(new Date())){
+//            map.put("errMsg", "用户登录过期!");
+//            return map;
+//        }
+//        User user = userMapper.selectById(loginTicket.getUserId());
+//        if(user==null){
+//            map.put("errMsg", "用户不存在!");
+//            return map;
+//        }
+//        map.put("userId",user.getUserId());
+//        map.put("user", user);
+//        return map;
+//    }
 
     public void logout(String ticket) {
         loginTicketMapper.updateStatus(ticket, 1);
     }
     public LoginTicket findLoginTicket(String ticket) {
-        return loginTicketMapper.selectByTicket(ticket);
+//        return loginTicketMapper.selectByTicket(ticket);
+        String redisKey = RedisKeyUtil.getTicketKey(ticket);
+        return (LoginTicket) redisTemplate.opsForValue().get(redisKey);
     }
 
     public User findUserById(int id) {

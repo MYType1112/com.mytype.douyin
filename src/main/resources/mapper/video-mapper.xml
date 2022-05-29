@@ -66,17 +66,12 @@
             video_t
         left join user_t
         on video_t.author_id = user_t.user_id
+        where #{latestTime} > upload_time
         <if test="authorId!=0">
-            where author_id = #{authorId}
+            and author_id = #{authorId}
         </if>
-        order by create_time desc
+        order by upload_time desc
         limit #{offset}, #{limit}
-
-<!--        select * from-->
-<!--        emp e-->
-<!--        left join dept  d-->
-<!--        on e.deptno =d.deptno-->
-<!--        where empno = #{empno}-->
     </select>
 
 
@@ -89,13 +84,39 @@
         select count(id)
         from video_t
         <if test="userId!=0">
-            and author_id = #{userId}
+            where author_id = #{userId}
         </if>
     </select>
 
+<!--    <select id="selectVideoById" resultType="Video">-->
+<!--        select <include refid="selectFields"></include>-->
+<!--        from video_t-->
+<!--        where id = #{id}-->
+<!--    </select>-->
+
     <select id="selectVideoById" resultType="Video">
-        select <include refid="selectFields"></include>
+        select
+        video_t.id,
+        video_t.author_id,
+        user_t.user_id,
+        user_t.username,
+        user_t.password,
+        user_t.salt,
+        user_t.follow_count,
+        user_t.follower_count,
+        user_t.create_time,
+        user_t.avatar,
+        user_t.signature,
+        user_t.background_image,
+        video_t.play_url,
+        video_t.cover_url,
+        video_t.favorite_count,
+        video_t.comment_count,
+        video_t.upload_time,
+        video_t.title
         from video_t
+        left join user_t
+        on video_t.author_id = user_t.user_id
         where id = #{id}
     </select>
 

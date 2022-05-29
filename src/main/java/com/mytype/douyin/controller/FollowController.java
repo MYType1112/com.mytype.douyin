@@ -4,6 +4,7 @@ import com.mytype.douyin.entity.User;
 import com.mytype.douyin.service.FollowService;
 import com.mytype.douyin.service.UserService;
 import com.mytype.douyin.until.CommunityConstant;
+import com.mytype.douyin.until.HostHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -22,22 +23,25 @@ public class FollowController implements CommunityConstant {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private HostHolder hostHolder;
+
     @RequestMapping(path = "/relation/action", method = RequestMethod.POST)
     @ResponseBody
     public Map<String, Object> follow(
-            @RequestParam(name = "token", defaultValue = "") String token,
             @RequestParam(name = "to_user_id", defaultValue = "") String entityId,
             @RequestParam(name = "action_type", defaultValue = "") String actionType
 //            int entityType, int entityId
     ) {
         Map<String, Object> res = new HashMap<>();
-        Map<String, Object> infoMap = userService.userInfo(token);
-        if (infoMap.containsKey("errMsg")) {
+//        Map<String, Object> infoMap = userService.userInfo(token);
+        User user = hostHolder.getUser();
+        if (user==null) {
             res.put("status_code", 1);
-            res.put("status_msg", infoMap.get("errMsg"));
+            res.put("status_msg", "请先登录！");
             return res;
         }
-        User user = (User) infoMap.get("user");
+//        User user = (User) infoMap.get("user");
 
         if (actionType.equals("1")) {
             followService.follow(user.getUserId(), ENTITY_TYPE_USER, Integer.parseInt(entityId));
@@ -55,23 +59,23 @@ public class FollowController implements CommunityConstant {
     @RequestMapping(path = "/relation/follow/list", method = RequestMethod.GET)
     @ResponseBody
     public Map<String, Object> getFollowees(
-            @RequestParam(name = "user_id", defaultValue = "") String userId,
-            @RequestParam(name = "token", defaultValue = "") String token
-    ) {
+            @RequestParam(name = "user_id", defaultValue = "") String userId) {
+
         Map<String, Object> res = new HashMap<>();
-        Map<String, Object> infoMap = userService.userInfo(token);
-        if (infoMap.containsKey("errMsg")) {
+//        Map<String, Object> infoMap = userService.userInfo(token);
+        User user = hostHolder.getUser();
+        if (user==null) {
             res.put("status_code", 1);
-            res.put("status_msg", infoMap.get("errMsg"));
+            res.put("status_msg", "请先登录！");
             return res;
         }
         int followeeCount = (int) followService.findFolloweeCount(Integer.parseInt(userId), ENTITY_TYPE_USER);
 
         List<User> userList = followService.findFollowees(Integer.parseInt(userId), 0, followeeCount);
-        if (userList != null) {
-            for (User user : userList) {
+        if (userList.size() != 0) {
+            for (User user1 : userList) {
 //                user.setIsFollow(followService.hasFollowed((int) infoMap.get("userId"), ENTITY_TYPE_USER, Integer.parseInt(userId)));
-                user.setIsFollow(true);
+                user1.setIsFollow(true);
             }
         }
         res.put("status_code", 0);
@@ -83,15 +87,13 @@ public class FollowController implements CommunityConstant {
 
     @RequestMapping(path = "/relation/follower/list", method = RequestMethod.GET)
     @ResponseBody
-    public Map<String, Object> getFollowers(
-            @RequestParam(name = "user_id", defaultValue = "") String userId,
-            @RequestParam(name = "token", defaultValue = "") String token
-    ) {
+    public Map<String, Object> getFollowers(@RequestParam(name = "user_id") String userId) {
         Map<String, Object> res = new HashMap<>();
-        Map<String, Object> infoMap = userService.userInfo(token);
-        if (infoMap.containsKey("errMsg")) {
+//        Map<String, Object> infoMap = userService.userInfo(token);
+        User user = hostHolder.getUser();
+        if (user==null) {
             res.put("status_code", 1);
-            res.put("status_msg", infoMap.get("errMsg"));
+            res.put("status_msg", "请先登录！");
             return res;
         }
 
@@ -100,13 +102,9 @@ public class FollowController implements CommunityConstant {
 //        List<Map<String, Object>> userList = followService.findFollowers(Integer.parseInt(userId), 0, followerCount);
         List<User> userList = followService.findFollowers(Integer.parseInt(userId), 0, followerCount);
 
-        if (userList != null) {
-//            for (Map<String, Object> map : userList) {
-//                User u = (User) map.get("user");
-//                u.setIsFollow(followService.hasFollowed((int) infoMap.get("userId"), ENTITY_TYPE_USER, Integer.parseInt(userId)));
-//            }
-            for (User user : userList) {
-                user.setIsFollow(followService.hasFollowed((int) infoMap.get("userId"), ENTITY_TYPE_USER, Integer.parseInt(userId)));
+        if (userList.size() != 0) {
+            for (User user1 : userList) {
+                user1.setIsFollow(followService.hasFollowed(user.getUserId(), ENTITY_TYPE_USER, user1.getUserId()));
             }
         }
         res.put("status_code", 0);

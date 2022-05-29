@@ -23,6 +23,10 @@ public class User {
     private int followCount;
     @JsonProperty("follower_count")
     private int followerCount;
+    @JsonProperty("total_favorited")
+    private int totalFavorited;
+    @JsonProperty("favorite_count")
+    private long favoriteCount;
     private Date createTime;
     private String avatar;
     private String signature;

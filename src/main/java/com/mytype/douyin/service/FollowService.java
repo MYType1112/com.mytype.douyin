@@ -85,7 +85,9 @@ public class FollowService implements CommunityConstant {
         List<User> list = new ArrayList<>();
         for (Integer targetId : targetIds) {
             User user = userService.findUserById(targetId);
-            list.add(user);
+            if(user!=null){
+                list.add(user);
+            }
         }
 
         return list;
@@ -112,7 +114,9 @@ public class FollowService implements CommunityConstant {
         List<User> list = new ArrayList<>();
         for (Integer targetId : targetIds) {
             User user = userService.findUserById(targetId);
-            list.add(user);
+            if(user!=null){
+                list.add(user);
+            }
         }
 
         return list;

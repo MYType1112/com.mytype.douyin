@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -111,10 +112,18 @@ public class MapperTest {
 
     @Test
     public void testSelectVideos() {
-        List<Video> videos = videoMapper.selectVideos(0, 0, 10);
+//        1653795200 1653795462
+//        1653795155411
+        long currentTime = new Date().getTime();
+        Date date = new Date(1653724875000L);//新建一个时间对象
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//你要转换成的时间格式,大小写不要变
+        String Time = sdf.format(date);//转换你的时间
+        List<Video> videos = videoMapper.selectVideos(0, Time,0, 2);
         for (Video video : videos){
-            System.out.println(video);
+            System.out.println(video.getUploadTime());
         }
+        long time = videos.get(videos.size() - 1).getUploadTime().getTime();
+        System.out.println(time);
     }
 
 }

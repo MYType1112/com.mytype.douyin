@@ -25,7 +25,7 @@
     </select>
 
 
-    <insert id="insertUser" parameterType="User" keyProperty="id">
+    <insert id="insertUser" parameterType="User" keyProperty="userId">
         insert into user_t (<include refid="insertFields"></include>)
         values(#{username}, #{password}, #{followCount}, #{followerCount}, #{salt}, #{createTime}, #{avatar}, #{signature}, #{backgroundImage})
     </insert>

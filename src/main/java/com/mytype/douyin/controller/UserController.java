@@ -6,7 +6,10 @@ import com.mytype.douyin.entity.Response;
 import com.mytype.douyin.entity.User;
 import com.mytype.douyin.entity.UserLoginResponse;
 import com.mytype.douyin.entity.UserResponse;
+import com.mytype.douyin.service.FollowService;
 import com.mytype.douyin.service.UserService;
+import com.mytype.douyin.until.CommunityConstant;
+import com.mytype.douyin.until.HostHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,10 +21,16 @@ import java.util.Map;
 
 @Controller
 @RequestMapping("/douyin/user")
-public class UserController {
+public class UserController implements CommunityConstant {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private FollowService followService;
+
+    @Autowired
+    private HostHolder hostHolder;
 
     @ResponseBody
     @RequestMapping(path = "/register", method = RequestMethod.POST)
@@ -72,20 +81,14 @@ public class UserController {
 
     @ResponseBody
     @RequestMapping(method = RequestMethod.GET)
-    public Response UserInfo(
-            @RequestParam(name = "token") String token) {
-        Map<String, Object> InfoMap = userService.userInfo(token);
-        if (InfoMap.containsKey("userId")) {
+    public Response UserInfo() {
+//        Map<String, Object> InfoMap = userService.userInfo(token);
+        User user = hostHolder.getUser();
+        if (user==null) {
 //            int userId = (int) InfoMap.get("userId");
-            return new UserResponse(0, (User) InfoMap.get("user"));
-
-        } else {
-            StringBuilder msg = new StringBuilder();
-            if(InfoMap.containsKey("errMsg")){
-                msg.append(InfoMap.get("usernameMsg"));
-            }
-            return new UserLoginResponse(1,msg.toString());
+            return new UserLoginResponse(1, "获取用户信息失败，请尝试重新登陆！");
         }
+        return new UserResponse(0, "获取用户信息失败", user);
     }
 
 }
